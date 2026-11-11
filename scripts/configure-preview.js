@@ -1,0 +1,11 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const target = path.resolve(__dirname, '../.env');
+const portable = path.resolve(__dirname, '../.runtime/libreoffice/program/soffice.com').replaceAll('\\', '/');
+if (!fs.existsSync(portable)) throw new Error('No está disponible la copia local de LibreOffice.');
+let env = fs.readFileSync(target, 'utf8');
+const line = `LIBREOFFICE_PATH='${portable}'`;
+env = /^LIBREOFFICE_PATH=.*$/m.test(env) ? env.replace(/^LIBREOFFICE_PATH=.*$/m, line) : `${env}\n${line}\n`;
+fs.writeFileSync(target, env);
+console.log('Conversor de vista previa local configurado. Las demás variables se conservan.');

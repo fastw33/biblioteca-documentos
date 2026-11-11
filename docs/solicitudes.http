@@ -1,0 +1,145 @@
+@base = http://127.0.0.1:3016
+@token = PEGAR_JWT_DE_WMS
+@id = PEGAR_ID_DOCUMENTO
+
+### Estado público
+GET {{base}}/health
+
+### Estado de dependencias
+GET {{base}}/api/documentos/ready
+Authorization: Bearer {{token}}
+
+### Guardar solo Canva, sin archivo en S3
+POST {{base}}/api/documentos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Brochure corporativo",
+  "empresa": "Genika",
+  "tipo": "brochure",
+  "descripcion": "Diseño editable del brochure comercial",
+  "canvaUrl": "https://www.canva.com/design/ID_REAL/EDITAR_ENLACE/edit"
+}
+
+### Subir archivo y, opcionalmente, Canva. Cambiar la ruta de archivo antes de enviar.
+POST {{base}}/api/documentos
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=GenikaBoundary
+
+--GenikaBoundary
+Content-Disposition: form-data; name="nombre"
+
+Brochure corporativo
+--GenikaBoundary
+Content-Disposition: form-data; name="empresa"
+
+Genika
+--GenikaBoundary
+Content-Disposition: form-data; name="tipo"
+
+brochure
+--GenikaBoundary
+Content-Disposition: form-data; name="canvaUrl"
+
+https://www.canva.com/design/ID_REAL/EDITAR_ENLACE/edit
+--GenikaBoundary
+Content-Disposition: form-data; name="archivo"; filename="brochure.pdf"
+Content-Type: application/pdf
+
+< C:/ruta/al/brochure.pdf
+--GenikaBoundary--
+
+### Buscar y filtrar
+GET {{base}}/api/documentos?q=brochure&empresa=Genika&tipo=brochure&page=1&limit=24&orden=recientes
+Authorization: Bearer {{token}}
+
+### Solo diseños sin archivo exportado
+GET {{base}}/api/documentos?extension=canva
+Authorization: Bearer {{token}}
+
+### Catálogos
+GET {{base}}/api/documentos/catalogos
+Authorization: Bearer {{token}}
+
+### Estadísticas
+GET {{base}}/api/documentos/resumen
+Authorization: Bearer {{token}}
+
+### Consultar metadatos y enlace Canva
+GET {{base}}/api/documentos/{{id}}
+Authorization: Bearer {{token}}
+
+### Descargar copia Genika (o archivo conservado si no admite metadata)
+GET {{base}}/api/documentos/{{id}}/descarga
+Authorization: Bearer {{token}}
+
+### Editar como autor o administrador
+PATCH {{base}}/api/documentos/{{id}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Brochure comercial actualizado",
+  "baseVersion": 1,
+  "notaCambio": "Actualización del título comercial",
+  "canvaUrl": "https://www.canva.com/design/ID_REAL/EDITAR_ENLACE/edit"
+}
+
+### Publicar una nueva versión de Canva (un diseño duplicado con nuevo ID)
+POST {{base}}/api/documentos/{{id}}/versiones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "baseVersion": 1,
+  "notaCambio": "Nuevo diseño de oferta",
+  "canvaUrl": "https://www.canva.com/design/OTRO_ID_REAL/ENLACE/edit"
+}
+
+### Historial de versiones, fechas y autores
+GET {{base}}/api/documentos/{{id}}/versiones
+Authorization: Bearer {{token}}
+
+### Descargar una versión anterior (queda auditado)
+GET {{base}}/api/documentos/{{id}}/descarga?version=1
+Authorization: Bearer {{token}}
+
+### Vista previa protegida (no cuenta como descarga)
+GET {{base}}/api/documentos/{{id}}/vista-previa?version=1
+Authorization: Bearer {{token}}
+
+### Miniatura protegida
+GET {{base}}/api/documentos/{{id}}/miniatura?version=1
+Authorization: Bearer {{token}}
+
+### Auditoría de descargas y aperturas de Canva
+GET {{base}}/api/documentos/{{id}}/auditoria?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Apertura auditada de Canva
+POST {{base}}/api/documentos/{{id}}/canva
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"version": 1}
+
+### Consultar identificación Genika de una versión
+GET {{base}}/api/documentos/{{id}}/identificacion?version=1
+Authorization: Bearer {{token}}
+
+### Descargar original de conservación (autor o administrador)
+GET {{base}}/api/documentos/{{id}}/descarga?version=1&original=true
+Authorization: Bearer {{token}}
+
+### Verificar un archivo por su SHA-256 (sin guardarlo)
+POST {{base}}/api/documentos/verificar
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=VerificacionGenika
+
+--VerificacionGenika
+Content-Disposition: form-data; name="archivo"; filename="documento.pdf"
+Content-Type: application/pdf
+
+< C:/ruta/al/documento.pdf
+--VerificacionGenika--
