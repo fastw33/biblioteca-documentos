@@ -30,7 +30,7 @@ const listing = z.object({
   extension: z.string().regex(/^[a-z0-9]{0,12}$/).default(''),
   page: z.coerce.number().int().min(1).max(100000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(24),
-  orden: z.enum(['recientes', 'nombre']).default('recientes'),
+  orden: z.enum(['recientes', 'nombre', 'empresa']).default('recientes'),
 }).strict();
 const MIMES = { pdf: 'application/pdf', doc: 'application/msword',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

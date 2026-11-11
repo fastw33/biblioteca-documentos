@@ -91,6 +91,8 @@ No se llama a las rutas de emisión de Radicaciones: no se generan consecutivos,
 
 La conversión Office se hace localmente con LibreOffice, sin enviar archivos a servicios externos. Las miniaturas PDF usan Poppler (`pdftoppm`). Las vistas generadas se almacenan con sufijos `.preview.pdf` y `.thumb.jpg` en el **mismo bucket de esta API**, sin alterar el original. Las peticiones del visor están autenticadas y no exponen claves S3. Hay un máximo de dos generaciones simultáneas; los clientes pueden reintentar un `503` por ocupación.
 
+Los DOCX creados desde una plantilla de Word pueden conservar una referencia a un `.dotx` externo. Para la vista previa se desvincula esa plantilla únicamente en una copia temporal, usando el contenido, estilos e imágenes incluidos en el DOCX. El archivo original, la copia Genika descargable y sus versiones se conservan. Los demás recursos externos, macros y objetos incrustados siguen bloqueados para conversión.
+
 Configurar `LIBREOFFICE_PATH`, `PDFTOPPM_PATH` y `PREVIEW_TIMEOUT_MS` si los ejecutables no están en PATH. En este equipo LibreOffice se extrajo dentro de `.runtime/libreoffice` y se configuró su ruta en `.env`, sin modificar otros proyectos ni la instalación de Office. El `Dockerfile` incluye LibreOffice, Poppler y fuentes para producción.
 
 ## Rutas
@@ -118,7 +120,7 @@ Configurar `LIBREOFFICE_PATH`, `PDFTOPPM_PATH` y `PREVIEW_TIMEOUT_MS` si los eje
 
 No hay endpoint de borrado. Los PATCH no modifican el autor ni el archivo original; tampoco permiten quitar el único enlace de un registro sin archivo. Una versión nueva solo de Canva deja su archivo previo accesible en el historial, sin presentar esa exportación anterior como contenido del nuevo diseño.
 
-Filtros de listado: `q` (nombre, empresa, descripción y nombre original), `empresa`, `tipo`, `extension`, `page` (desde 1), `limit` (1–100, por defecto 24), `orden` (`recientes` o `nombre`). Empresa y categoría usan coincidencia exacta; la búsqueda de texto ignora mayúsculas y trata los caracteres como texto literal.
+Filtros de listado: `q` (nombre, empresa, descripción y nombre original), `empresa`, `tipo`, `extension`, `page` (desde 1), `limit` (1–100, por defecto 24), `orden` (`recientes`, `nombre` o `empresa`). El orden por empresa usa empresa y nombre A–Z con comparación española y orden numérico natural antes de paginar. Empresa y categoría usan coincidencia exacta; la búsqueda de texto ignora mayúsculas y trata los caracteres como texto literal.
 
 ```json
 {
@@ -154,6 +156,8 @@ QA de Office: `scripts/generate-preview-fixtures.py` crea archivos de prueba (re
 ## FrontWms
 
 En desarrollo, Vite envía `/documentos-api` a `http://127.0.0.1:3016`; la ruta funciona con la sesión de WMS. El menú **Biblioteca** está encima de Radicaciones, dentro del layout protegido. Ofrece búsqueda, categorías, filtros, vista previa, identificación Genika, descargas, historial, auditoría, carga inicial y publicación de versiones.
+
+La vista se agrupa por empresa de manera predeterminada. Se puede cambiar a última actualización o nombre desde el selector de orden. Cuando hay varias páginas, los encabezados de empresa indican cuántos documentos de esa empresa aparecen en la página actual. Tarjetas, filtros, formularios y visor se adaptan a móvil, tablet y escritorio.
 
 Para producción definir **antes de compilar** `VITE_DOCUMENTOS_API_URL=https://<dominio-real>/api/documentos` y permitir el origen de FrontWms en `CORS_ORIGINS` de esta API. Esta variable es pública y no debe contener secretos. El proxy de desarrollo no se incluye en los archivos compilados.
 

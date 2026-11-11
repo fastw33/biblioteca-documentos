@@ -6,7 +6,7 @@ const { pathToFileURL } = require('node:url');
 const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
 const sharp = require('sharp');
-const yauzl = require('yauzl');
+const { validateOffice } = require('./office-preview');
 const { identifyPdf } = require('./identification');
 const run = promisify(execFile);
 const fail = (status, message) => Object.assign(new Error(message), { status });
@@ -31,36 +31,6 @@ async function readBody(object, limit) {
     chunks.push(Buffer.from(chunk));
   }
   return Buffer.concat(chunks);
-}
-// No se descomprime al disco ni se permiten recursos externos, macros o ZIPs desproporcionados al convertir Office.
-async function validateOffice(bytes, extension) {
-  if (!['docx', 'xlsx', 'pptx', 'ppsx', 'odt', 'ods', 'odp'].includes(extension)) return;
-  await new Promise((resolve, reject) => yauzl.fromBuffer(bytes, { lazyEntries: true }, (error, zip) => {
-    if (error) return reject(fail(422, 'El documento Office está dañado.'));
-    let size = 0, entries = 0, settled = false;
-    const bad = () => { if (!settled) { settled = true; zip.close(); reject(fail(422, 'Este archivo contiene recursos que no admiten vista previa segura. Descarga el original.')); } };
-    zip.on('error', bad);
-    zip.on('entry', entry => {
-      size += entry.uncompressedSize; entries++;
-      if (size > 150 * 1024 * 1024 || entries > 10000 || (entry.generalPurposeBitFlag & 1) || /vbaProject|embeddings\//i.test(entry.fileName)) return bad();
-      if (!/\.rels$|^content\.xml$/i.test(entry.fileName)) return zip.readEntry();
-      if (entry.uncompressedSize > 10 * 1024 * 1024) return bad();
-      zip.openReadStream(entry, (streamError, stream) => {
-        if (streamError) return bad();
-        const chunks = [];
-        stream.on('error', bad);
-        stream.on('data', data => chunks.push(data));
-        stream.on('end', () => {
-          if (settled) return;
-          const xml = Buffer.concat(chunks).toString('utf8');
-          if (/<!DOCTYPE|<!ENTITY|TargetMode\s*=\s*["']External["']|(?:xlink:href|src)\s*=\s*["'](?:https?:|file:|ftp:|\\\\)/i.test(xml)) return bad();
-          zip.readEntry();
-        });
-      });
-    });
-    zip.on('end', () => { if (!settled) { settled = true; resolve(); } });
-    zip.readEntry();
-  }));
 }
 class PreviewService {
   constructor(config, storage) { this.config = config; this.storage = storage; this.pending = new Map(); this.running = 0; }
@@ -87,14 +57,14 @@ class PreviewService {
     return this.generate(`${previewBase}.preview.pdf`, async () => {
       const inputKey = version.identificacion?.modo === 'interna' ? version.identificacion.storageKey : version.storageKey;
       const input = await readBody(await this.storage.get(inputKey), this.config.maxBytes * 5);
-      await validateOffice(input, version.extension);
+      const safeInput = await validateOffice(input, version.extension);
       const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'genika-preview-'));
       try {
         const filename = path.join(directory, `documento.${version.extension}`);
         const profile = path.join(directory, 'profile');
         await fs.mkdir(path.join(profile, 'user'), { recursive: true });
         await fs.writeFile(path.join(profile, 'user', 'registrymodifications.xcu'), `<?xml version="1.0"?><oor:items xmlns:oor="http://openoffice.org/2001/registry"><item oor:path="/org.openoffice.Office.Common/Security/Scripting"><prop oor:name="MacroSecurityLevel" oor:op="fuse"><value>3</value></prop></item></oor:items>`);
-        await fs.writeFile(filename, input);
+        await fs.writeFile(filename, safeInput);
         await run(this.config.LIBREOFFICE_PATH, [`-env:UserInstallation=${pathToFileURL(profile).href}`,
           '--headless', '--nologo', '--nodefault', '--nofirststartwizard', '--convert-to', 'pdf', '--outdir', directory, filename],
         { timeout: this.config.PREVIEW_TIMEOUT_MS, maxBuffer: 1024 * 1024, windowsHide: true });

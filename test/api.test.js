@@ -116,6 +116,23 @@ describe('API de documentos (Mongo real aislado, almacenamiento simulado)', () =
     const literal = await request(app).get('/api/documentos?q=.*').set(auth(token)).expect(200);
     assert.equal(literal.body.total, 0);
   });
+  it('ordena globalmente por empresa y nombre antes de paginar, conservando filtros y totales', async () => {
+    for (const [empresa, nombre] of [['Harvest', 'Membrete'], ['Fastway', 'Oferta 10'], ['Green Way', 'Membrete'], ['Fastway', 'Oferta 2']])
+      await request(app).post('/api/documentos').set(auth(token)).send({ ...input, empresa, nombre, canvaUrl: design }).expect(201);
+    const first = await request(app).get('/api/documentos').set(auth(token)).query({ orden: 'empresa', limit: 2 }).expect(200);
+    const second = await request(app).get('/api/documentos').set(auth(token)).query({ orden: 'empresa', limit: 2, page: 2 }).expect(200);
+    assert.equal(first.body.total, 4); assert.equal(first.body.pages, 2);
+    assert.deepEqual(first.body.items.map(item => `${item.empresa}/${item.nombre}`), ['Fastway/Oferta 2', 'Fastway/Oferta 10']);
+    assert.deepEqual(second.body.items.map(item => item.empresa), ['Green Way', 'Harvest']);
+    const filtered = await request(app).get('/api/documentos').set(auth(token)).query({ orden: 'empresa', empresa: 'Fastway' }).expect(200);
+    assert.equal(filtered.body.total, 2); assert.equal(filtered.body.items.length, 2);
+    for (const orden of ['empresa', 'nombre', 'recientes']) {
+      const missing = await request(app).get('/api/documentos').set(auth(token)).query({ orden, empresa: 'fastway' }).expect(200);
+      assert.equal(missing.body.total, 0); assert.equal(missing.body.items.length, 0);
+    }
+    const byName = await request(app).get('/api/documentos').set(auth(token)).query({ orden: 'nombre' }).expect(200);
+    assert.equal(byName.body.total, 4);
+  });
   it('rechaza extensión, contenido falso, archivos vacíos, tamaño y campos inválidos antes de S3', async () => {
     await upload(token, input, content, 'archivo.exe').expect(415);
     await upload(token, input, Buffer.from('archivo falso'), 'archivo.pdf').expect(415);

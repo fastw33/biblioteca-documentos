@@ -79,14 +79,22 @@ function createApp({ config, Document, Audit, storage, connection, logger = cons
     const query = listing.parse(req.query);
     const filter = {};
     for (const key of ['empresa', 'tipo', 'extension']) if (query[key]) filter[key] = query[key];
+    // La collation usada para ordenar no cambia la coincidencia exacta del filtro de empresa.
+    if (query.empresa) filter.empresa = new RegExp(`^${escapeRegex(query.empresa)}$`);
     if (query.q) {
       const regex = new RegExp(escapeRegex(query.q), 'i');
       filter.$or = ['nombre', 'empresa', 'descripcion', 'nombreOriginal'].map(key => ({ [key]: regex }));
     }
-    const sort = query.orden === 'nombre' ? { nombre: 1, _id: 1 } : { updatedAt: -1, _id: -1 };
+    const sort = query.orden === 'empresa' ? { empresa: 1, nombre: 1, _id: 1 } :
+      query.orden === 'nombre' ? { nombre: 1, _id: 1 } : { updatedAt: -1, _id: -1 };
+    const itemsQuery = Document.find(filter).sort(sort).skip((query.page - 1) * query.limit).limit(query.limit).lean();
+    const totalQuery = Document.countDocuments(filter);
+    if (query.orden === 'empresa') {
+      const collation = { locale: 'es', strength: 2, numericOrdering: true };
+      itemsQuery.collation(collation); totalQuery.collation(collation);
+    }
     const [items, total] = await Promise.all([
-      Document.find(filter).sort(sort).skip((query.page - 1) * query.limit).limit(query.limit).lean(),
-      Document.countDocuments(filter),
+      itemsQuery, totalQuery,
     ]);
     res.json({ items: items.map(item => publicDocument(item, req.user)), total,
       page: query.page, limit: query.limit, pages: Math.ceil(total / query.limit) });
