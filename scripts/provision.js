@@ -1,4 +1,5 @@
 'use strict';
+require('dotenv').config({ quiet: true });
 const { loadConfig } = require('../src/config');
 const { connectDatabase } = require('../src/database');
 const { S3Storage } = require('../src/storage');

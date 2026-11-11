@@ -5,13 +5,13 @@
   "description": "Biblioteca corporativa con MongoDB, S3 y JWT de WMS",
   "main": "src/server.js",
   "engines": {
-    "node": ">=20.19"
+    "node": "24.x"
   },
   "scripts": {
-    "start": "node --env-file=.env src/server.js",
+    "start": "node src/server.js",
     "dev": "node --env-file=.env --watch src/server.js",
     "config:genika": "node scripts/configure-genika.js",
-    "setup": "node --env-file=.env scripts/provision.js",
+    "setup": "node scripts/provision.js",
     "test": "node --test --test-concurrency=1",
     "test:live": "node --env-file=.env scripts/live-check.js",
     "check": "node scripts/check.js"

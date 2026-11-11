@@ -15,7 +15,7 @@ La configuración local reutiliza únicamente la conexión al servidor y las cre
 
 ## Inicio local
 
-Requiere Node 20.19 o superior (Node 22 recomendado), Mongo disponible y S3/MinIO activo. Ya se generó `.env` para este equipo; está excluido de Git y Docker.
+Requiere Node 24, Mongo disponible y S3/MinIO activo. Ya se generó `.env` para este equipo; está excluido de Git y Docker.
 
 ```powershell
 npm install
@@ -159,7 +159,11 @@ Para producción definir **antes de compilar** `VITE_DOCUMENTOS_API_URL=https://
 
 ## Despliegue
 
-El `Dockerfile` usa Node 22 y ejecuta el proceso como usuario sin privilegios. Proveer variables de entorno mediante el servidor de despliegue; no copiar `.env` a la imagen. Dentro de Docker, `127.0.0.1` apunta al contenedor: configurar los hosts reales de Mongo y MinIO. Ejecutar la preparación con `node scripts/provision.js` en el entorno configurado.
+La configuración de **Railpack + Node 24** está en `railpack.json`, e incluye LibreOffice, Poppler y fuentes en la imagen final. El `Dockerfile` alternativo también usa Node 24 y ejecuta el proceso como usuario sin privilegios. `npm start` lee las variables de Coolify sin exigir un archivo `.env`. El archivo local `.env` es opcional y nunca sobreescribe variables existentes.
+
+Dominio de producción: **https://biblioteca.appfastway.com**. La guía completa con puerto, health checks, variables, redes, CORS y configuración de FrontWms está en [docs/COOLIFY.md](docs/COOLIFY.md). `.env.production.example` es una plantilla pública sin secretos; `.env.production` contiene la configuración privada y permanece fuera de Git y de la imagen.
+
+En producción la API exige la base `repositorio_documentos` y el bucket `genika-repositorio-documentos`. `INITIALIZE_STORAGE_ON_START=true` crea ese bucket si falta, y lo comprueba antes de servir HTTP. Dentro de Docker, `127.0.0.1` apunta al contenedor: configurar los hosts reales de Mongo y MinIO y la red de Coolify que los comunica.
 
 Para exponer la API configurar `HOST=0.0.0.0`, `CORS_ORIGINS` con los orígenes reales de FrontWms y TLS en el proxy. Si hay un único proxy confiable, `TRUST_PROXY_HOPS=1`; el valor local es 0. El proxy debe permitir el límite de archivo más el pequeño sobrecosto multipart. `GET /health` comprueba el proceso; `/api/documentos/ready` valida también dependencias y requiere JWT.
 

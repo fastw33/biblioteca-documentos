@@ -1,4 +1,6 @@
 'use strict';
+// Coolify inyecta variables en el proceso. El .env local es opcional y no las sustituye.
+require('dotenv').config({ quiet: true });
 const { loadConfig } = require('./config');
 const { connectDatabase } = require('./database');
 const { S3Storage } = require('./storage');
@@ -8,6 +10,16 @@ async function main() {
   const config = loadConfig();
   const database = await connectDatabase(config);
   const storage = new S3Storage(config);
+  try {
+    if (config.INITIALIZE_STORAGE_ON_START === 'true') {
+      const result = await storage.provision();
+      console.log(`Bucket exclusivo de Biblioteca: ${result.created ? 'creado' : 'disponible'}.`);
+    }
+  } catch (error) {
+    await database.connection.close();
+    storage.client.destroy();
+    throw error;
+  }
   const server = createApp({ config, ...database, storage }).listen(config.PORT, config.HOST, () => {
     console.log(`API de documentos: http://${config.HOST}:${config.PORT}/api/documentos`);
   });

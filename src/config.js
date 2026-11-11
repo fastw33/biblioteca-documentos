@@ -16,11 +16,15 @@ function loadConfig(env = process.env) {
     S3_ENDPOINT: z.union([z.url(), z.literal('')]).default(''),
     S3_FORCE_PATH_STYLE: z.enum(['true', 'false']).default('false'),
     S3_PREFIX: z.string().regex(/^[a-zA-Z0-9_-]+$/).default('documentos'),
+    INITIALIZE_STORAGE_ON_START: z.enum(['true', 'false']).default('false'),
     MAX_FILE_MB: z.coerce.number().int().min(1).max(100).default(30),
     LIBREOFFICE_PATH: z.string().default('soffice'),
     PDFTOPPM_PATH: z.string().default('pdftoppm'),
     PREVIEW_TIMEOUT_MS: z.coerce.number().int().min(1000).max(180000).default(60000),
   }).parse(env);
+  if (value.NODE_ENV === 'production' &&
+      (value.MONGO_DB_NAME !== 'repositorio_documentos' || value.S3_BUCKET !== 'genika-repositorio-documentos'))
+    throw new Error('Producción debe usar exclusivamente la base repositorio_documentos y el bucket genika-repositorio-documentos');
   return { ...value, maxBytes: value.MAX_FILE_MB * 1024 * 1024,
     corsOrigins: value.CORS_ORIGINS.split(',').map(v => v.trim()).filter(Boolean) };
 }

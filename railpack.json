@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "packages": {
+    "node": "24"
+  },
+  "deploy": {
+    "startCommand": "node src/server.js",
+    "aptPackages": [
+      "...",
+      "libreoffice-writer",
+      "libreoffice-calc",
+      "libreoffice-impress",
+      "poppler-utils",
+      "fonts-dejavu-core",
+      "fonts-liberation"
+    ]
+  }
+}
