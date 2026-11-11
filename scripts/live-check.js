@@ -26,7 +26,7 @@ async function main() {
     await request(app).get('/api/documentos').expect(401);
     await request(app).get('/api/documentos/ready').set('Authorization', authorization).expect(200);
     const created = await request(app).post('/api/documentos').set('Authorization', authorization)
-      .field('nombre', testId).field('empresa', 'Verificación API').field('tipo', 'otro')
+      .field('nombre', testId).field('empresa', 'General').field('tipo', 'otro')
       .field('canvaUrl', 'https://www.canva.com/design/DAGtest123/edit')
       .attach('archivo', bytes, 'verificacion.txt').expect(201);
     document = await database.Document.findById(created.body._id).select('+storageKey');

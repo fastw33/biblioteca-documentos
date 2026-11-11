@@ -40,6 +40,8 @@ Los usuarios autenticados pueden listar, consultar, descargar, revisar historial
 
 Cada registro requiere `nombre`, `empresa` y `tipo`. Se admiten `descripcion` y `canvaUrl` opcionales.
 
+`empresa` es un catálogo cerrado: `Fastway`, `Harvest`, `Green Way`, `General` u `Otra`. El formulario usa un selector obligatorio y la API rechaza otros textos al crear o cambiar la empresa, incluso en nuevas versiones. `General` y `Otra` son opciones fijas, sin campo de escritura libre. Los registros y versiones anteriores conservan sus valores; al editarlos se puede seleccionar una empresa del catálogo. `/catalogos` devuelve todas las opciones en `empresas` y los nombres ya guardados en `empresasRegistradas` para conservar sus filtros históricos.
+
 - `tipo`: `brochure`, `formato`, `oferta`, `presentacion`, `manual`, `otro`.
 - Archivos: PDF, Office (incluidos DOCM/XLSM/PPTM y PPS/PPSX), OpenDocument, RTF, texto y datos, imágenes, audio, video, ZIP/RAR/7Z, PSD/AI/EPS y DWG/DXF. La lista exacta se obtiene en `/catalogos` mediante `extensionesPermitidas`.
 - Máximo local: **30 MB**, configurable con `MAX_FILE_MB`.

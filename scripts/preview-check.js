@@ -33,7 +33,7 @@ async function main() {
   try {
     const original = await fixture('brochure.docx');
     const created = await request(app).post('/api/documentos').set(auth).field('nombre', actor)
-      .field('empresa', 'QA API').field('tipo', 'brochure').attach('archivo', original, 'brochure.docx').expect(201);
+      .field('empresa', 'General').field('tipo', 'brochure').attach('archivo', original, 'brochure.docx').expect(201);
     const id = created.body._id;
     assert.equal(created.body.identificacion.modo, 'interna');
     const branded = await request(app).get(`/api/documentos/${id}/descarga`).set(auth).buffer(true).parse((response, callback) => {
@@ -54,7 +54,7 @@ async function main() {
     const list = await request(app).get('/api/documentos').set(auth).query({ q: actor }).expect(200);
     assert.equal(list.body.total, 1); assert.equal(list.body.items[0].versionActual, 2);
     const spreadsheet = await request(app).post('/api/documentos').set(auth).field('nombre', `${actor}-xlsx`)
-      .field('empresa', 'QA API').field('tipo', 'formato').attach('archivo', await fixture('oferta.xlsx'), 'oferta.xlsx').expect(201);
+      .field('empresa', 'General').field('tipo', 'formato').attach('archivo', await fixture('oferta.xlsx'), 'oferta.xlsx').expect(201);
     await check(spreadsheet.body._id, 1);
     console.log('Office real OK: Word, PowerPoint y Excel convertidos a PDF y miniatura; versiones preservadas y descarga auditada.');
   } finally {

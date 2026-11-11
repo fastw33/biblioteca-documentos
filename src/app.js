@@ -10,7 +10,7 @@ const { pipeline } = require('node:stream/promises');
 const { randomUUID } = require('node:crypto');
 const { ZodError } = require('zod');
 const { authenticate, canEdit, actor } = require('./auth');
-const { TYPES } = require('./database');
+const { TYPES, COMPANIES } = require('./database');
 const { metadata, patchMetadata, newVersion, listing, fileInfo, MIMES } = require('./validation');
 const { snapshot, history, versionOf, appendVersion } = require('./versions');
 const { PreviewService, previewKind, readBody } = require('./previews');
@@ -63,7 +63,7 @@ function createApp({ config, Document, Audit, storage, connection, logger = cons
   });
   router.get('/catalogos', async (req, res) => {
     const [empresas, extensiones] = await Promise.all([Document.distinct('empresa'), Document.distinct('extension')]);
-    res.json({ tipos: TYPES, empresas: empresas.sort((a, b) => a.localeCompare(b, 'es')),
+    res.json({ tipos: TYPES, empresas: COMPANIES, empresasRegistradas: empresas.sort((a, b) => a.localeCompare(b, 'es')),
       extensiones: extensiones.sort(), extensionesPermitidas: Object.keys(MIMES), maxFileMB: config.MAX_FILE_MB });
   });
   router.get('/resumen', async (req, res) => {

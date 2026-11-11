@@ -15,7 +15,7 @@ describe('API de documentos (Mongo real aislado, almacenamiento simulado)', () =
   let mongo, db, app, token, otherToken, adminToken, storage, config;
   const content = Buffer.from('%PDF-1.7\nDocumento de prueba');
   const design = 'https://www.canva.com/design/DAGabc123/abcDEF/edit?utm_source=share';
-  const input = { nombre: 'Brochure comercial', empresa: 'Genika', tipo: 'brochure', descripcion: 'Oferta institucional' };
+  const input = { nombre: 'Brochure comercial', empresa: 'General', tipo: 'brochure', descripcion: 'Oferta institucional' };
   const auth = token => ({ Authorization: `Bearer ${token}` });
   const upload = (identity = token, fields = input, bytes = content, filename = 'brochure.pdf') => {
     let req = request(app).post('/api/documentos').set(auth(identity));
@@ -108,7 +108,8 @@ describe('API de documentos (Mongo real aislado, almacenamiento simulado)', () =
     const paged = await request(app).get('/api/documentos?limit=1&page=2&orden=nombre').set(auth(token)).expect(200);
     assert.equal(paged.body.total, 2); assert.equal(paged.body.pages, 2); assert.equal(paged.body.items.length, 1);
     const catalog = await request(app).get('/api/documentos/catalogos').set(auth(token)).expect(200);
-    assert.deepEqual(catalog.body.empresas, ['Fastway', 'Genika']);
+    assert.deepEqual(catalog.body.empresas, ['Fastway', 'Harvest', 'Green Way', 'General', 'Otra']);
+    assert.deepEqual(catalog.body.empresasRegistradas, ['Fastway', 'General']);
     const summary = await request(app).get('/api/documentos/resumen').set(auth(token)).expect(200);
     assert.equal(summary.body.documentos, 2); assert.equal(summary.body.bytes, content.length * 2);
     await request(app).get('/api/documentos?limit=0').set(auth(token)).expect(400);
@@ -140,6 +141,36 @@ describe('API de documentos (Mongo real aislado, almacenamiento simulado)', () =
     await upload(token, input, Buffer.alloc(1024 * 1024 + 1), 'archivo.pdf').expect(413);
     await upload(token, { ...input, empresa: '' }).expect(400);
     assert.equal(storage.puts, 0); assert.equal(await db.Document.countDocuments(), 0);
+  });
+  it('ofrece las cinco empresas aunque no haya documentos y rechaza escritura libre antes de guardar archivos', async () => {
+    const catalog = await request(app).get('/api/documentos/catalogos').set(auth(token)).expect(200);
+    assert.deepEqual(catalog.body.empresas, ['Fastway', 'Harvest', 'Green Way', 'General', 'Otra']);
+    assert.deepEqual(catalog.body.empresasRegistradas, []);
+    for (const empresa of ['fastway', 'Greenway', 'Otra empresa', 'General ', ''])
+      await upload(token, { ...input, empresa }).expect(400);
+    assert.equal(storage.puts, 0); assert.equal(await db.Document.countDocuments(), 0);
+    for (const empresa of catalog.body.empresas)
+      await request(app).post('/api/documentos').set(auth(token)).send({ ...input, empresa, canvaUrl: design }).expect(201);
+  });
+  it('valida la empresa también al editar o publicar versiones, conservando el historial existente', async () => {
+    const created = await upload(token, { ...input, empresa: 'Green Way' }).expect(201);
+    const url = `/api/documentos/${created.body._id}`;
+    const puts = storage.puts;
+    await request(app).patch(url).set(auth(token)).send({ empresa: 'Greenway', baseVersion: 1 }).expect(400);
+    await request(app).post(`${url}/versiones`).set(auth(token)).field('empresa', 'Greenway')
+      .field('baseVersion', '1').attach('archivo', content, 'nuevo.pdf').expect(400);
+    assert.equal(storage.puts, puts);
+    const updated = await request(app).patch(url).set(auth(token)).send({ empresa: 'Otra', baseVersion: 1 }).expect(200);
+    assert.equal(updated.body.empresa, 'Otra'); assert.equal(updated.body.versionActual, 2);
+    const versions = await request(app).get(`${url}/versiones`).set(auth(token)).expect(200);
+    assert.equal(versions.body.items.find(v => v.numero === 1).empresa, 'Green Way');
+    // Un valor histórico libre sigue visible y filtrable, sin añadirlo al catálogo para nuevas cargas.
+    await db.Document.updateOne({ _id: created.body._id }, { $set: { empresa: 'Greenway' } });
+    const catalog = await request(app).get('/api/documentos/catalogos').set(auth(token)).expect(200);
+    assert.ok(catalog.body.empresasRegistradas.includes('Greenway'));
+    assert.ok(!catalog.body.empresas.includes('Greenway'));
+    const old = await request(app).get('/api/documentos').set(auth(token)).query({ empresa: 'Greenway' }).expect(200);
+    assert.equal(old.body.total, 1);
   });
   it('limpia S3 si Mongo falla al registrar el archivo', async () => {
     const original = db.Document.create;
@@ -260,7 +291,7 @@ describe('API de documentos (Mongo real aislado, almacenamiento simulado)', () =
     assert.equal(first.body.identificacion.modo, 'interna'); assert.equal(first.body.identificacion.origen, 'Genika');
     assert.equal(first.body.identificacion.storageKey, undefined); assert.equal(storage.files.size, 2);
     const branded = await request(app).get(`/api/documentos/${id}/descarga`).set(auth(otherToken)).expect(200);
-    assert.equal((await PDFDocument.load(branded.body, { updateMetadata: false })).getAuthor(), 'Genika | Genika');
+    assert.equal((await PDFDocument.load(branded.body, { updateMetadata: false })).getAuthor(), 'Genika | General');
     assert.equal(branded.headers['x-genika-metadata'], 'interna');
     const source = await request(app).get(`/api/documentos/${id}/descarga?original=true`).set(auth(token)).expect(200);
     assert.deepEqual(source.body, original);

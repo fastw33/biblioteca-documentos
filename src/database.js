@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 
 const TYPES = ['brochure', 'formato', 'oferta', 'presentacion', 'manual', 'otro'];
+const COMPANIES = ['Fastway', 'Harvest', 'Green Way', 'General', 'Otra'];
 function createModels(connection) {
   const actor = { id: { type: String, required: true }, nombre: { type: String, required: true } };
   const identification = new mongoose.Schema({
@@ -67,4 +68,4 @@ async function connectDatabase(config) {
     return { connection, ...models };
   } catch (error) { await connection.close().catch(() => {}); throw error; }
 }
-module.exports = { TYPES, createModels, connectDatabase };
+module.exports = { TYPES, COMPANIES, createModels, connectDatabase };

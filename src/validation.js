@@ -1,7 +1,7 @@
 'use strict';
 const { z } = require('zod');
 const path = require('node:path');
-const { TYPES } = require('./database');
+const { TYPES, COMPANIES } = require('./database');
 const canvaUrl = z.union([z.literal(''), z.url().max(2048).refine(value => {
   const url = new URL(value);
   return url.protocol === 'https:' && ['canva.com', 'www.canva.com'].includes(url.hostname) &&
@@ -9,7 +9,7 @@ const canvaUrl = z.union([z.literal(''), z.url().max(2048).refine(value => {
 }, 'Usa un enlace HTTPS de diseño de canva.com/design/…')]);
 const metadata = z.object({
   nombre: z.string().trim().min(2).max(160),
-  empresa: z.string().trim().min(2).max(120),
+  empresa: z.enum(COMPANIES),
   tipo: z.enum(TYPES),
   descripcion: z.string().trim().max(1500).default(''),
   canvaUrl: canvaUrl.default(''),
